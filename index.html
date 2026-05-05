@@ -1,12 +1,415 @@
-<!doctype html>
-<html lang="zh-TW">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>關係代名詞：從零到會考秒殺</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
+import React, { useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { BookOpen, CheckCircle2, HelpCircle, Lightbulb, Target, XCircle, RefreshCw, GraduationCap, PencilLine } from "lucide-react";
+
+const quizData = [
+  {
+    id: 1,
+    level: "基礎",
+    type: "選擇題",
+    question: "The boy ____ is playing basketball is my brother.",
+    options: ["which", "who", "where", "what"],
+    answer: "who",
+    explanation: "先找先行詞：The boy 是人，而且關係代名詞在子句中當主詞（is playing 的主詞），所以用 who。"
+  },
+  {
+    id: 2,
+    level: "基礎",
+    type: "選擇題",
+    question: "This is the book ____ I bought yesterday.",
+    options: ["who", "where", "which", "when"],
+    answer: "which",
+    explanation: "先行詞 the book 是物，關係代名詞在子句 I bought ____ yesterday 中當受詞，所以用 which / that；本題選 which。"
+  },
+  {
+    id: 3,
+    level: "基礎",
+    type: "選擇題",
+    question: "I know the girl ____ father is a doctor.",
+    options: ["who", "whose", "which", "where"],
+    answer: "whose",
+    explanation: "father 前面缺『誰的』，表示所有格，要用 whose。whose father = the girl's father。"
+  },
+  {
+    id: 4,
+    level: "進階",
+    type: "選擇題",
+    question: "The restaurant ____ we had dinner last night was great.",
+    options: ["who", "which", "where", "whose"],
+    answer: "where",
+    explanation: "先行詞 restaurant 是地點，且子句 we had dinner last night 不缺主詞或受詞，而是缺地點副詞，所以用 where。"
+  },
+  {
+    id: 5,
+    level: "進階",
+    type: "選擇題",
+    question: "The day ____ we first met was rainy.",
+    options: ["when", "who", "where", "whose"],
+    answer: "when",
+    explanation: "先行詞 The day 是時間，子句 we first met 不缺主詞或受詞，而是缺時間副詞，所以用 when。"
+  },
+  {
+    id: 6,
+    level: "會考常考",
+    type: "選擇題",
+    question: "The man ____ you saw at the station is my uncle.",
+    options: ["who", "where", "when", "whose"],
+    answer: "who",
+    explanation: "先行詞 the man 是人，關係代名詞在子句 you saw ____ at the station 中當受詞，可用 who / whom / that；會考常見 who。"
+  },
+  {
+    id: 7,
+    level: "會考常考",
+    type: "選擇題",
+    question: "I like the movie ____ makes me laugh.",
+    options: ["who", "which", "where", "whose"],
+    answer: "which",
+    explanation: "先行詞 movie 是物，且關係代名詞在子句中當主詞（makes 的主詞），所以用 which / that；本題選 which。"
+  },
+  {
+    id: 8,
+    level: "會考常考",
+    type: "選擇題",
+    question: "This is the house ____ Jack built ten years ago.",
+    options: ["who", "where", "which", "when"],
+    answer: "which",
+    explanation: "house 雖然是地點，但子句 Jack built ____ ten years ago 缺的是受詞，不是地點副詞，所以用 which，不用 where。這是會考陷阱題。"
+  },
+  {
+    id: 9,
+    level: "挑戰",
+    type: "選擇題",
+    question: "The singer ____ songs are popular will visit Taiwan next month.",
+    options: ["who", "whose", "which", "where"],
+    answer: "whose",
+    explanation: "songs 前面需要『誰的』，表示所有格，故用 whose。whose songs = the singer's songs。"
+  },
+  {
+    id: 10,
+    level: "挑戰",
+    type: "選擇題",
+    question: "Do you remember the park ____ we played when we were kids?",
+    options: ["which", "where", "who", "whose"],
+    answer: "where",
+    explanation: "先行詞 park 是地點，子句 we played 不缺受詞，而是缺『在哪裡玩』，所以用 where。"
+  }
+];
+
+const combineExercises = [
+  {
+    id: "c1",
+    a: "I have a friend.",
+    b: "He can speak three languages.",
+    answer: "I have a friend who can speak three languages.",
+    tip: "a friend 是人；第二句 He 是主詞 → who。"
+  },
+  {
+    id: "c2",
+    a: "This is the camera.",
+    b: "My father bought it for me.",
+    answer: "This is the camera which my father bought for me.",
+    tip: "the camera 是物；第二句 it 是受詞 → which / that。"
+  },
+  {
+    id: "c3",
+    a: "The girl is my classmate.",
+    b: "Her dog is very cute.",
+    answer: "The girl whose dog is very cute is my classmate.",
+    tip: "Her dog 表示『她的狗』 → whose dog。"
+  },
+  {
+    id: "c4",
+    a: "I will never forget the day.",
+    b: "I won the prize on that day.",
+    answer: "I will never forget the day when I won the prize.",
+    tip: "the day 是時間；on that day 可改成 when。"
+  }
+];
+
+const relationWords = [
+  { word: "who", use: "人｜主詞或受詞", example: "The boy who helped me is Tom.", note: "看到人，先想 who。" },
+  { word: "which", use: "物／動物｜主詞或受詞", example: "The bag which is on the desk is mine.", note: "看到物，先想 which。" },
+  { word: "that", use: "人或物｜主詞或受詞", example: "The book that you lent me is interesting.", note: "會考常與 who / which 互換，但逗號後通常不用 that。" },
+  { word: "whose", use: "人或物｜所有格", example: "I know a boy whose father is a teacher.", note: "後面通常直接接名詞：whose + N。" },
+  { word: "where", use: "地點｜副詞", example: "This is the place where we met.", note: "子句不缺受詞時才用 where。" },
+  { word: "when", use: "時間｜副詞", example: "I remember the day when we first met.", note: "子句不缺受詞時才用 when。" }
+];
+
+function Badge({ children, color = "blue" }) {
+  const colors = {
+    blue: "bg-blue-100 text-blue-700",
+    green: "bg-emerald-100 text-emerald-700",
+    amber: "bg-amber-100 text-amber-700",
+    purple: "bg-purple-100 text-purple-700",
+    red: "bg-red-100 text-red-700"
+  };
+  return <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${colors[color]}`}>{children}</span>;
+}
+
+export default function RelativePronounsExamPage() {
+  const [selected, setSelected] = useState({});
+  const [showAnswer, setShowAnswer] = useState({});
+  const [filter, setFilter] = useState("全部");
+  const [showCombine, setShowCombine] = useState({});
+
+  const filteredQuiz = useMemo(() => {
+    if (filter === "全部") return quizData;
+    return quizData.filter(q => q.level === filter);
+  }, [filter]);
+
+  const score = quizData.reduce((sum, q) => sum + (selected[q.id] === q.answer ? 1 : 0), 0);
+  const answered = Object.keys(selected).length;
+
+  const resetQuiz = () => {
+    setSelected({});
+    setShowAnswer({});
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50 text-slate-800">
+      <header className="mx-auto max-w-6xl px-4 py-8 md:py-12">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="rounded-[2rem] bg-white p-6 shadow-xl md:p-10">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="mb-3 flex flex-wrap gap-2">
+                <Badge color="blue">國中會考英文</Badge>
+                <Badge color="green">兩週衝刺</Badge>
+                <Badge color="purple">關係代名詞</Badge>
+              </div>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-5xl">關係代名詞：從零到會考秒殺</h1>
+              <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600 md:text-lg">
+                這份網頁適合家教上課使用：先用簡單規則建立概念，再用會考常見陷阱題練判斷。核心口訣：
+                <span className="font-semibold text-blue-700"> 先找先行詞，再看子句缺什麼。</span>
+              </p>
+            </div>
+            <div className="rounded-3xl bg-blue-600 p-5 text-white shadow-lg">
+              <GraduationCap className="mb-3 h-9 w-9" />
+              <p className="text-sm opacity-90">目前作答</p>
+              <p className="text-3xl font-bold">{score} / {quizData.length}</p>
+              <p className="text-xs opacity-90">已答 {answered} 題</p>
+            </div>
+          </div>
+        </motion.div>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-4 pb-12">
+        <section className="grid gap-4 md:grid-cols-3">
+          <Card className="rounded-3xl shadow-md">
+            <CardContent className="p-6">
+              <Target className="mb-3 h-8 w-8 text-blue-600" />
+              <h2 className="text-xl font-bold">一分鐘總觀念</h2>
+              <p className="mt-3 leading-7 text-slate-600">
+                關係代名詞用來把兩句話合併，避免重複名詞。被修飾的名詞叫
+                <span className="font-bold text-slate-900">先行詞</span>。
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="rounded-3xl shadow-md">
+            <CardContent className="p-6">
+              <Lightbulb className="mb-3 h-8 w-8 text-amber-500" />
+              <h2 className="text-xl font-bold">三步驟判斷</h2>
+              <ol className="mt-3 list-decimal space-y-2 pl-5 leading-7 text-slate-600">
+                <li>找先行詞：人、物、時間、地點？</li>
+                <li>看關係子句缺主詞、受詞、所有格，還是副詞？</li>
+                <li>選 who / which / that / whose / where / when。</li>
+              </ol>
+            </CardContent>
+          </Card>
+          <Card className="rounded-3xl shadow-md">
+            <CardContent className="p-6">
+              <HelpCircle className="mb-3 h-8 w-8 text-purple-600" />
+              <h2 className="text-xl font-bold">會考最愛陷阱</h2>
+              <p className="mt-3 leading-7 text-slate-600">
+                看到地點不一定用 where！例如：
+                <span className="font-semibold text-slate-900"> the house which Jack built</span>，因為 built 後面缺受詞。
+              </p>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="mt-8 rounded-[2rem] bg-white p-6 shadow-lg md:p-8">
+          <div className="mb-6 flex items-center gap-3">
+            <BookOpen className="h-7 w-7 text-blue-600" />
+            <h2 className="text-2xl font-bold">關係代名詞／關係副詞整理表</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {relationWords.map((item) => (
+              <motion.div key={item.word} whileHover={{ y: -4 }} className="rounded-3xl border border-slate-100 bg-slate-50 p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl font-extrabold text-blue-700">{item.word}</h3>
+                  <Badge color={item.word === "whose" ? "amber" : item.word === "where" || item.word === "when" ? "purple" : "blue"}>{item.use}</Badge>
+                </div>
+                <p className="mt-4 rounded-2xl bg-white p-3 font-mono text-sm text-slate-700">{item.example}</p>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{item.note}</p>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-8 grid gap-6 lg:grid-cols-2">
+          <Card className="rounded-[2rem] shadow-lg">
+            <CardContent className="p-6 md:p-8">
+              <h2 className="text-2xl font-bold">核心文法：主格、受格、所有格</h2>
+              <div className="mt-5 space-y-5">
+                <div className="rounded-3xl bg-blue-50 p-5">
+                  <h3 className="font-bold text-blue-800">1. 主格：關係代名詞後面直接接動詞</h3>
+                  <p className="mt-2 text-slate-700">The girl <b>who lives next door</b> is kind.</p>
+                  <p className="mt-1 text-sm text-slate-600">who 後面接 lives，代表 who 是 lives 的主詞。</p>
+                </div>
+                <div className="rounded-3xl bg-emerald-50 p-5">
+                  <h3 className="font-bold text-emerald-800">2. 受格：關係子句裡主詞已經出現</h3>
+                  <p className="mt-2 text-slate-700">The song <b>which I like</b> is old.</p>
+                  <p className="mt-1 text-sm text-slate-600">I 是主詞，like 後面缺受詞，所以 which 是受詞。</p>
+                </div>
+                <div className="rounded-3xl bg-amber-50 p-5">
+                  <h3 className="font-bold text-amber-800">3. 所有格：whose + 名詞</h3>
+                  <p className="mt-2 text-slate-700">The man <b>whose car is red</b> is my teacher.</p>
+                  <p className="mt-1 text-sm text-slate-600">whose car = the man's car。</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[2rem] shadow-lg">
+            <CardContent className="p-6 md:p-8">
+              <h2 className="text-2xl font-bold">where / when 的判斷技巧</h2>
+              <div className="mt-5 space-y-5">
+                <div className="rounded-3xl bg-purple-50 p-5">
+                  <h3 className="font-bold text-purple-800">用 where：子句缺「在那裡」</h3>
+                  <p className="mt-2 text-slate-700">This is the school <b>where I studied</b>.</p>
+                  <p className="mt-1 text-sm text-slate-600">I studied 不缺受詞，只缺地點。</p>
+                </div>
+                <div className="rounded-3xl bg-red-50 p-5">
+                  <h3 className="font-bold text-red-800">不用 where：子句缺受詞</h3>
+                  <p className="mt-2 text-slate-700">This is the school <b>which I visited</b>.</p>
+                  <p className="mt-1 text-sm text-slate-600">visited 後面缺受詞，所以用 which / that。</p>
+                </div>
+                <div className="rounded-3xl bg-slate-50 p-5">
+                  <h3 className="font-bold text-slate-800">用 when：子句缺「在那時」</h3>
+                  <p className="mt-2 text-slate-700">I remember the year <b>when I moved here</b>.</p>
+                  <p className="mt-1 text-sm text-slate-600">I moved here 不缺受詞，只缺時間背景。</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="mt-8 rounded-[2rem] bg-white p-6 shadow-lg md:p-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">互動練習：會考選擇題</h2>
+              <p className="mt-2 text-slate-600">選完後可看詳解。建議先讓學生說出「先行詞」和「子句缺什麼」。</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {["全部", "基礎", "進階", "會考常考", "挑戰"].map((f) => (
+                <Button key={f} variant={filter === f ? "default" : "outline"} className="rounded-full" onClick={() => setFilter(f)}>{f}</Button>
+              ))}
+              <Button variant="outline" className="rounded-full" onClick={resetQuiz}><RefreshCw className="mr-2 h-4 w-4" />重做</Button>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4">
+            {filteredQuiz.map((q) => {
+              const isAnswered = selected[q.id];
+              const isCorrect = selected[q.id] === q.answer;
+              return (
+                <div key={q.id} className="rounded-3xl border border-slate-100 bg-slate-50 p-5">
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <Badge color={q.level === "基礎" ? "green" : q.level === "進階" ? "blue" : q.level === "會考常考" ? "amber" : "purple"}>{q.level}</Badge>
+                    <span className="text-sm text-slate-500">第 {q.id} 題</span>
+                    {isAnswered && (isCorrect ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <XCircle className="h-5 w-5 text-red-500" />)}
+                  </div>
+                  <p className="text-lg font-semibold text-slate-900">{q.question}</p>
+                  <div className="mt-4 grid gap-2 md:grid-cols-4">
+                    {q.options.map((opt) => {
+                      const chosen = selected[q.id] === opt;
+                      const correct = q.answer === opt;
+                      const show = showAnswer[q.id];
+                      let cls = "border-slate-200 bg-white hover:bg-blue-50";
+                      if (chosen && correct) cls = "border-emerald-400 bg-emerald-50";
+                      if (chosen && !correct) cls = "border-red-400 bg-red-50";
+                      if (show && correct) cls = "border-emerald-400 bg-emerald-50";
+                      return (
+                        <button key={opt} onClick={() => setSelected(prev => ({ ...prev, [q.id]: opt }))} className={`rounded-2xl border px-4 py-3 text-left font-medium transition ${cls}`}>{opt}</button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={() => setShowAnswer(prev => ({ ...prev, [q.id]: !prev[q.id] }))}>
+                      {showAnswer[q.id] ? "收起詳解" : "看詳解"}
+                    </Button>
+                  </div>
+                  {showAnswer[q.id] && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-4 rounded-2xl bg-white p-4 text-sm leading-7 text-slate-700">
+                      <b>答案：{q.answer}</b><br />{q.explanation}
+                    </motion.div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="mt-8 rounded-[2rem] bg-white p-6 shadow-lg md:p-8">
+          <div className="mb-5 flex items-center gap-3">
+            <PencilLine className="h-7 w-7 text-blue-600" />
+            <h2 className="text-2xl font-bold">句子合併練習</h2>
+          </div>
+          <p className="mb-6 text-slate-600">請學生先圈出重複的名詞／代名詞，再決定用哪個關係詞。</p>
+          <div className="grid gap-4 md:grid-cols-2">
+            {combineExercises.map((ex, index) => (
+              <div key={ex.id} className="rounded-3xl border border-slate-100 bg-slate-50 p-5">
+                <Badge color="blue">合併題 {index + 1}</Badge>
+                <p className="mt-4 font-medium text-slate-900">① {ex.a}</p>
+                <p className="mt-2 font-medium text-slate-900">② {ex.b}</p>
+                <Button className="mt-4 rounded-full" variant="outline" onClick={() => setShowCombine(prev => ({ ...prev, [ex.id]: !prev[ex.id] }))}>
+                  {showCombine[ex.id] ? "收起答案" : "顯示答案"}
+                </Button>
+                {showCombine[ex.id] && (
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 rounded-2xl bg-white p-4 leading-7">
+                    <p><b>答案：</b>{ex.answer}</p>
+                    <p className="mt-2 text-sm text-slate-600"><b>提示：</b>{ex.tip}</p>
+                  </motion.div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-8 rounded-[2rem] bg-slate-900 p-6 text-white shadow-lg md:p-8">
+          <h2 className="text-2xl font-bold">家教上課建議：30 分鐘流程</h2>
+          <div className="mt-5 grid gap-4 md:grid-cols-4">
+            <div className="rounded-3xl bg-white/10 p-5">
+              <p className="text-3xl font-bold text-blue-300">5 分</p>
+              <p className="mt-2 font-semibold">概念建立</p>
+              <p className="mt-1 text-sm text-slate-300">先行詞、關係子句、缺什麼。</p>
+            </div>
+            <div className="rounded-3xl bg-white/10 p-5">
+              <p className="text-3xl font-bold text-emerald-300">10 分</p>
+              <p className="mt-2 font-semibold">範例講解</p>
+              <p className="mt-1 text-sm text-slate-300">who / which / whose / where / when 對比。</p>
+            </div>
+            <div className="rounded-3xl bg-white/10 p-5">
+              <p className="text-3xl font-bold text-amber-300">10 分</p>
+              <p className="mt-2 font-semibold">互動測驗</p>
+              <p className="mt-1 text-sm text-slate-300">每題要求學生說出判斷理由。</p>
+            </div>
+            <div className="rounded-3xl bg-white/10 p-5">
+              <p className="text-3xl font-bold text-purple-300">5 分</p>
+              <p className="mt-2 font-semibold">錯題整理</p>
+              <p className="mt-1 text-sm text-slate-300">特別整理 where/which 陷阱題。</p>
+            </div>
+          </div>
+          <div className="mt-6 rounded-3xl bg-white/10 p-5">
+            <h3 className="font-bold text-blue-200">考前口訣</h3>
+            <p className="mt-2 leading-7 text-slate-200">
+              人用 who，物用 which，人物可 that；誰的 whose 加名詞；地點 where、時間 when，但要先確認子句不缺受詞。
+            </p>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
