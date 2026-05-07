@@ -1,1 +1,1 @@
-https://aki-1201.github.io/junior-student-english/
+https://aKi-1201.github.io/junior-student-english/
